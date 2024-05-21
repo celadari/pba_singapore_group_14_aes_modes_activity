@@ -105,6 +105,9 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let pad_data_len = data.len();
+    if (pad_data_len == 0){
+        return data;
+    }
     let pad_amount = *data.get(pad_data_len - 1).unwrap();
     data[..pad_data_len - usize::from(pad_amount)].to_vec()
 }
@@ -309,4 +312,19 @@ mod tests {
                 16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8,16u8])
         )
     }
+
+    #[test]
+    fn ctr_encrypt_test(){
+        let plain_text = "i am a cow";
+        let byte_vector: Vec<u8> = plain_text.as_bytes().to_vec();
+        let key = [1u8,6u8,5u8,6u8,2u8,5u8,44u8,3u8,7u8,8u8,9u8,1u8,14u8,13u8,15u8,76u8];
+        let groups = group(pad(byte_vector.clone()));
+        let num_groups = groups.len();
+        let encrypted = ctr_encrypt(byte_vector,key);
+        assert_eq!(
+            encrypted.len(),
+            num_groups
+        );
+    }
+
 }
