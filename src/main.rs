@@ -182,12 +182,17 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
             let counter_bytes: [u8; 8] = counter_number.to_le_bytes();
             let mut v: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
             v[0..8].copy_from_slice(&nonce);
-            v[9..16].copy_from_slice(&counter_bytes);
+            v[8..16].copy_from_slice(&counter_bytes);
             xor_arrays(aes_encrypt(v, &key), plain_text_block)
         })
         .collect::<Vec<[u8; BLOCK_SIZE]>>();
 
-    un_pad(un_group(ciphered_blocks))
+    let ciphered_text = un_pad(un_group(ciphered_blocks));
+    // // Insert the nonce as the first block of the ciphered text
+    let mut result = Vec::default();
+    result.extend_from_slice(&nonce);
+    result.extend(ciphered_text);
+    result
 }
 
 fn xor_arrays(array1: [u8; BLOCK_SIZE], array2: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
@@ -199,7 +204,32 @@ fn xor_arrays(array1: [u8; BLOCK_SIZE], array2: [u8; BLOCK_SIZE]) -> [u8; BLOCK_
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    // Extract the nonce from the first 8 bytes of the ciphertext
+    let nonce: [u8; 8] = {
+        let mut nonce = [0u8; 8];
+        nonce.copy_from_slice(&cipher_text[0..8]);
+        nonce
+    };
+
+    // Extract the remaining ciphertext blocks
+    let ciphered_text = &cipher_text[16..].to_vec();
+    let ciphered_blocks = group(pad(cipher_text));
+    let nb_blocks = ciphered_blocks.len();
+
+    let counters = (0..nb_blocks - 1).into_iter();
+
+    let plain_text_blocks = counters
+        .zip(ciphered_blocks)
+        .map(|(counter_number, ciphered_block)| {
+            let counter_bytes: [u8; 8] = counter_number.to_le_bytes();
+            let mut v: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            v[0..8].copy_from_slice(&nonce);
+            v[8..16].copy_from_slice(&counter_bytes);
+            xor_arrays(aes_encrypt(v, &key), ciphered_block)
+        })
+        .collect::<Vec<[u8; BLOCK_SIZE]>>();
+
+    un_pad(un_group(plain_text_blocks))
 }
 
 #[cfg(test)]
