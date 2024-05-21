@@ -174,7 +174,6 @@ fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     todo!()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,6 +231,19 @@ mod tests {
         assert_eq!(
             data2,
             expected_data2
+        )
+    }
+
+    #[test]
+    fn unpad_test() {
+        assert_eq!(
+            vec![2u8,1u8,7u8,5u8],
+            un_pad(vec![2u8,1u8,7u8,5u8, 12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8])
+        );
+        
+        assert_eq!(
+            vec![2u8,1u8,7u8,5u8, 12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8],
+            un_pad(vec![2u8,1u8,7u8,5u8, 12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,12u8,1u8])
         )
     }
 }
