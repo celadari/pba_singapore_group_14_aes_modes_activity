@@ -12,8 +12,7 @@
 //! best, and can sometimes be trivially broken.
 
 use aes::{
-    cipher,
-    cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
+    cipher::{generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
 use rand::Rng;
@@ -109,7 +108,7 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let pad_data_len = data.len();
-    if (pad_data_len == 0) {
+    if pad_data_len == 0 {
         return data;
     }
     let pad_amount = *data.get(pad_data_len - 1).unwrap();
@@ -218,7 +217,7 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // 1. get iv
     let mut groups = group(cipher_text);
 
-    let mut IV = groups.first().unwrap().clone();
+    let mut iv = groups.first().unwrap().clone();
     groups.remove(0);
     let mut message: Vec<u8> = vec![];
     // 2. get groups
@@ -230,9 +229,9 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         println!("encrypted data: {:?}", data);
 
         // 4. XOR with IV
-        let decrypt_data = xor(data, IV);
+        let decrypt_data = xor(data, iv);
         message.extend(decrypt_data.iter());
-        IV = new_group;
+        iv = new_group;
     }
 
     un_pad(message)
@@ -266,7 +265,7 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     let plain_text_blocks = group(pad(plain_text));
     let nb_blocks = plain_text_blocks.len();
 
-    let counters = (0..nb_blocks - 1).into_iter();
+    let counters = (0..nb_blocks).into_iter();
 
     let ciphered_blocks = counters
         .zip(plain_text_blocks)
@@ -280,7 +279,7 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         .collect::<Vec<[u8; BLOCK_SIZE]>>();
 
     // // Insert the nonce as the first block of the ciphered text
-    let mut result = Vec::with_capacity(ciphered_blocks.len() * BLOCK_SIZE + 8);
+    let mut result = Vec::new();
     result.extend_from_slice(&nonce);
     for block in ciphered_blocks {
         result.extend_from_slice(&block);
@@ -309,7 +308,7 @@ fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     let ciphered_blocks = group(ciphered_text);
     let nb_blocks = ciphered_blocks.len();
 
-    let counters = (0..nb_blocks - 1).into_iter();
+    let counters = (0..nb_blocks).into_iter();
 
     let plain_text_blocks = counters
         .zip(ciphered_blocks)
@@ -457,18 +456,6 @@ mod tests {
     }
 
     #[test]
-    fn ctr_encrypt_test() {
-        let plain_text = "i am a cow";
-        let byte_vector: Vec<u8> = plain_text.as_bytes().to_vec();
-        let key =
-            [1u8, 6u8, 5u8, 6u8, 2u8, 5u8, 44u8, 3u8, 7u8, 8u8, 9u8, 1u8, 14u8, 13u8, 15u8, 76u8];
-        let groups = group(pad(byte_vector.clone()));
-        let num_groups = groups.len();
-        let encrypted = ctr_encrypt(byte_vector, key);
-        assert_eq!(encrypted.len(), num_groups);
-    }
-
-    #[test]
     fn cbc_should_works() {
         let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
 
@@ -490,6 +477,19 @@ mod tests {
         let cipher_text = ecb_encrypt(plain_text.clone(), key);
 
         let message = ecb_decrypt(cipher_text, key);
+
+        assert_eq!(plain_text, message);
+    }
+
+    #[test]
+    fn ctr_should_works() {
+        let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
+
+        let key: [u8; BLOCK_SIZE] = [0; 16];
+
+        let cipher_text = ctr_encrypt(plain_text.clone(), key);
+
+        let message = ctr_decrypt(cipher_text, key);
 
         assert_eq!(plain_text, message);
     }
