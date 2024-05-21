@@ -276,11 +276,12 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         })
         .collect::<Vec<[u8; BLOCK_SIZE]>>();
 
-    let ciphered_text = un_pad(un_group(ciphered_blocks));
     // // Insert the nonce as the first block of the ciphered text
-    let mut result = Vec::default();
+    let mut result = Vec::with_capacity(ciphered_blocks.len() * BLOCK_SIZE + 8);
     result.extend_from_slice(&nonce);
-    result.extend(ciphered_text);
+    for block in ciphered_blocks {
+        result.extend_from_slice(&block);
+    }
     result
 }
 
@@ -301,8 +302,8 @@ fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     };
 
     // Extract the remaining ciphertext blocks
-    let ciphered_text = &cipher_text[16..].to_vec();
-    let ciphered_blocks = group(pad(cipher_text));
+    let ciphered_text = cipher_text[8..].to_vec();
+    let ciphered_blocks = group(ciphered_text);
     let nb_blocks = ciphered_blocks.len();
 
     let counters = (0..nb_blocks - 1).into_iter();
