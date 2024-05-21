@@ -125,7 +125,7 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
     // 1. Get and encrypt blocks
-    let blocks = group(plain_text);
+    let blocks = group(pad(plain_text));
     let mut data = vec![];
 
     for block in blocks {
@@ -141,10 +141,10 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     let blocks = group(cipher_text);
     let mut message = vec![];
     for block in blocks {
-        let data = aes_encrypt(block, &key);
+        let data = aes_decrypt(block, &key);
         message.extend_from_slice(&data);
     }
-    return message;
+    return un_pad(message);
 }
 
 fn xor(x: [u8; BLOCK_SIZE], y: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
@@ -480,6 +480,19 @@ mod tests {
         let cipher_text = cbc_encrypt(plain_text.clone(), key);
 
         let message = cbc_decrypt(cipher_text, key);
+
+        assert_eq!(plain_text, message);
+    }
+
+    #[test]
+    fn ecb_should_works() {
+        let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
+
+        let key: [u8; BLOCK_SIZE] = [0; 16];
+
+        let cipher_text = ecb_encrypt(plain_text.clone(), key);
+
+        let message = ecb_decrypt(cipher_text, key);
 
         assert_eq!(plain_text, message);
     }
