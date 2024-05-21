@@ -171,30 +171,32 @@ fn xor(x: [u8; BLOCK_SIZE], y: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
 
-    // use rand::thread_rng;
-    // use rand::{rngs::ThreadRng, Rng};
+    use rand::thread_rng;
+    use rand::{rngs::ThreadRng, Rng};
 
-    // fn generate_random_iv(rng: &mut ThreadRng) -> [u8; BLOCK_SIZE] {
-    //     let mut iv = [0u8; BLOCK_SIZE];
-    //     rng.fill(&mut iv);
-    //     iv
-    // }
+    fn generate_random_iv(rng: &mut ThreadRng) -> [u8; BLOCK_SIZE] {
+        let mut iv = [0u8; BLOCK_SIZE];
+        rng.fill(&mut iv);
+        iv
+    }
 
-    // let mut rng = thread_rng();
+    let mut rng = thread_rng();
 
     // Generate a random IV
-    // let iv = generate_random_iv(&mut rng);
+    let iv = generate_random_iv(&mut rng);
 
-    let groups = group(plain_text);
+    // Pad the data
+    let plain_text_padded = pad(plain_text);
 
-    let mut current_iv = [1u8; BLOCK_SIZE]; // Example initialization vectors
+    // Group the data into blocks
+    let groups = group(plain_text_padded);
+
+    let mut current_iv = iv;
     let mut result: Vec<u8> = current_iv.to_vec();
 
     for group in groups {
         // xor group with IV
-
         let mut xored: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-
         for (i, (&x, &y)) in current_iv.iter().zip(group.iter()).enumerate() {
             xored[i] = x ^ y;
         }
@@ -467,21 +469,21 @@ mod tests {
 
     #[test]
     fn cbc_should_works() {
-        // let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
+        let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
 
         // Happy case
-        let plain_text = vec![
-            2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
-            7u8,
-        ];
+        // let plain_text = vec![
+        //     2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+        //     7u8,
+        // ];
 
         let key: [u8; BLOCK_SIZE] = [0; 16];
 
         let cipher_text = cbc_encrypt(plain_text.clone(), key);
 
-        let message = cbc_decrypt(cipher_text, key);
+        let decrypted_message = cbc_decrypt(cipher_text, key);
 
-        assert_eq!(plain_text, message);
+        assert_eq!(plain_text, decrypted_message);
     }
 
     #[test]
