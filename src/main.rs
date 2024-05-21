@@ -11,10 +11,8 @@
 //! it is not secure and make the point that the most straight-forward approach isn't always the
 //! best, and can sometimes be trivially broken.
 
-use aes::{
-    cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
-    Aes128,
-};
+use rand::Rng;
+use aes::{cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit}, Aes128, cipher};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -167,7 +165,37 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random nonce
-    todo!()
+    let mut rng = rand::thread_rng();
+    let mut nonce: [u8; 8] = Default::default();
+    for i in 0..8 {
+        nonce[i] = rng.gen();
+    }
+
+    let plain_text_blocks = group(pad(plain_text));
+    let nb_blocks = plain_text_blocks.len();
+
+    let counters = (0..nb_blocks - 1).into_iter();
+
+    let ciphered_blocks = counters
+        .zip(plain_text_blocks)
+        .map(|(counter_number, plain_text_block)| {
+            let counter_bytes: [u8; 8] = counter_number.to_le_bytes();
+            let mut v: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            v[0..8].copy_from_slice(&nonce);
+            v[9..16].copy_from_slice(&counter_bytes);
+            xor_arrays(aes_encrypt(v, &key), plain_text_block)
+        })
+        .collect::<Vec<[u8; BLOCK_SIZE]>>();
+
+    un_pad(un_group(ciphered_blocks))
+}
+
+fn xor_arrays(array1: [u8; BLOCK_SIZE], array2: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
+    let mut xor_result: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+    for i in 0..BLOCK_SIZE {
+        xor_result[i] = array1[i] ^ array2[i];
+    }
+    xor_result
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
