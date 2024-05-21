@@ -95,7 +95,13 @@ fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    todo!()
+    let mut data = Vec::new();
+
+    for block in blocks {
+        data.extend_from_slice(&block);
+    }
+
+    data
 }
 
 /// Does the opposite of the pad function.
@@ -164,4 +170,66 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     todo!()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ungroup_test1() {
+        let blocks1 = vec![
+            [1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8, 77u8, 88u8],
+            [2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8, 78u8, 89u8],
+            [3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8, 79u8, 90u8],
+            [4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8],
+            [5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8],
+            [6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8],
+            [7u8, 9u8, 10u8, 82u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8],
+        ];
+        let expected_data1 = vec![
+            1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8, 77u8, 88u8,
+            2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8, 78u8, 89u8,
+            3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8, 79u8, 90u8,
+            4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8,
+            5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8,
+            6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8,
+            7u8, 9u8, 10u8, 82u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8
+        ];
+        let data1 = un_group(blocks1);
+
+        assert_eq!(
+            data1,
+            expected_data1
+        )
+    }
+
+    #[test]
+    fn ungroup_test2() {
+        let blocks2 = vec![
+            [1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8, 77u8, 88u8],
+            [2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8, 78u8, 89u8],
+            [3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8, 79u8, 90u8],
+            [4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8],
+            [5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8],
+            [6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8],
+            [7u8, 9u8, 10u8, 82u8, 51u8, 96u8, 130u8, 206u8, 17u8, 28u8, 39u8, 50u8, 61u8, 72u8, 83u8, 94u8],
+        ];
+        let expected_data2 = vec![
+            1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8, 77u8, 88u8,
+            2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8, 78u8, 89u8,
+            3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8, 79u8, 90u8,
+            4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8,
+            5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8,
+            6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8,
+            7u8, 9u8, 10u8, 82u8, 51u8, 96u8, 130u8, 206u8, 17u8, 28u8, 39u8, 50u8, 61u8, 72u8, 83u8, 94u8
+        ];
+        let data2 = un_group(blocks2);
+
+        assert_eq!(
+            data2,
+            expected_data2
+        )
+    }
 }
