@@ -95,12 +95,20 @@ fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    todo!()
+    let mut data = Vec::new();
+
+    for block in blocks {
+        data.extend_from_slice(&block);
+    }
+
+    data
 }
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
-    todo!()
+    let pad_data_len = data.len();
+    let pad_amount = *data.get(pad_data_len - 1).unwrap();
+    data[..pad_data_len - usize::from(pad_amount)].to_vec()
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -111,8 +119,7 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
-
-    // 1. Get and encrypt blocks 
+    // 1. Get and encrypt blocks
     let blocks = group(plain_text);
     let mut data = vec![];
 
@@ -120,12 +127,12 @@ fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
         let encrypted = aes_encrypt(block, &key);
         data.extend_from_slice(&encrypted)
     }
-    return data
+    return data;
 }
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    // 1. Get and block encrypted 
+    // 1. Get and block encrypted
     let blocks = group(cipher_text);
     let mut message = vec![];
     for block in blocks {
@@ -159,16 +166,16 @@ fn xor(x: [u8; BLOCK_SIZE], y: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
 
-    use rand::thread_rng;
-    use rand::{rngs::ThreadRng, Rng};
+    // use rand::thread_rng;
+    // use rand::{rngs::ThreadRng, Rng};
 
-    fn generate_random_iv(rng: &mut ThreadRng) -> [u8; BLOCK_SIZE] {
-        let mut iv = [0u8; BLOCK_SIZE];
-        rng.fill(&mut iv);
-        iv
-    }
+    // fn generate_random_iv(rng: &mut ThreadRng) -> [u8; BLOCK_SIZE] {
+    //     let mut iv = [0u8; BLOCK_SIZE];
+    //     rng.fill(&mut iv);
+    //     iv
+    // }
 
-    let mut rng = thread_rng();
+    // let mut rng = thread_rng();
 
     // Generate a random IV
     // let iv = generate_random_iv(&mut rng);
@@ -189,6 +196,8 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
         // encrypt the xor'd group
         let current_cipher_text = aes_encrypt(xored, &key);
+        println!("encrypted data: {:?}", current_cipher_text);
+
 
         // use the cipher text as the new IV
         current_iv = current_cipher_text;
@@ -208,10 +217,11 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     let mut message: Vec<u8> = vec![];
     // 2. get groups
     for group in groups {
-
         let new_group = group.clone();
         // 3. decrypt
-        let data = aes_encrypt(group, &key);
+        let data = aes_decrypt(group, &key);
+
+        println!("encrypted data: {:?}", data);
 
         // 4. XOR with IV
         let decrypt_data = xor(data, IV);
@@ -245,4 +255,156 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     todo!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ungroup_test1() {
+        let blocks1 = vec![
+            [
+                1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8,
+                77u8, 88u8,
+            ],
+            [
+                2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8,
+                78u8, 89u8,
+            ],
+            [
+                3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8,
+                79u8, 90u8,
+            ],
+            [
+                4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8,
+                80u8, 91u8,
+            ],
+            [
+                5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8,
+                81u8, 92u8,
+            ],
+            [
+                6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8,
+                82u8, 93u8,
+            ],
+            [
+                7u8, 9u8, 10u8, 82u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8, 12u8,
+            ],
+        ];
+        let expected_data1 = vec![
+            1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8,
+            77u8, 88u8, 2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8,
+            56u8, 67u8, 78u8, 89u8, 3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8,
+            35u8, 46u8, 57u8, 68u8, 79u8, 90u8, 4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8,
+            14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8, 5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8,
+            204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8, 6u8, 8u8, 9u8, 81u8, 50u8, 95u8,
+            129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8, 7u8, 9u8, 10u8, 82u8,
+            12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+        ];
+        let data1 = un_group(blocks1);
+
+        assert_eq!(data1, expected_data1)
+    }
+
+    #[test]
+    fn ungroup_test2() {
+        let blocks2 = vec![
+            [
+                1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8,
+                77u8, 88u8,
+            ],
+            [
+                2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8, 56u8, 67u8,
+                78u8, 89u8,
+            ],
+            [
+                3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8, 35u8, 46u8, 57u8, 68u8,
+                79u8, 90u8,
+            ],
+            [
+                4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8, 14u8, 25u8, 36u8, 47u8, 58u8, 69u8,
+                80u8, 91u8,
+            ],
+            [
+                5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8, 204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8,
+                81u8, 92u8,
+            ],
+            [
+                6u8, 8u8, 9u8, 81u8, 50u8, 95u8, 129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8,
+                82u8, 93u8,
+            ],
+            [
+                7u8, 9u8, 10u8, 82u8, 51u8, 96u8, 130u8, 206u8, 17u8, 28u8, 39u8, 50u8, 61u8, 72u8,
+                83u8, 94u8,
+            ],
+        ];
+        let expected_data2 = vec![
+            1u8, 3u8, 4u8, 76u8, 45u8, 90u8, 124u8, 200u8, 11u8, 22u8, 33u8, 44u8, 55u8, 66u8,
+            77u8, 88u8, 2u8, 4u8, 5u8, 77u8, 46u8, 91u8, 125u8, 201u8, 12u8, 23u8, 34u8, 45u8,
+            56u8, 67u8, 78u8, 89u8, 3u8, 5u8, 6u8, 78u8, 47u8, 92u8, 126u8, 202u8, 13u8, 24u8,
+            35u8, 46u8, 57u8, 68u8, 79u8, 90u8, 4u8, 6u8, 7u8, 79u8, 48u8, 93u8, 127u8, 203u8,
+            14u8, 25u8, 36u8, 47u8, 58u8, 69u8, 80u8, 91u8, 5u8, 7u8, 8u8, 80u8, 49u8, 94u8, 128u8,
+            204u8, 15u8, 26u8, 37u8, 48u8, 59u8, 70u8, 81u8, 92u8, 6u8, 8u8, 9u8, 81u8, 50u8, 95u8,
+            129u8, 205u8, 16u8, 27u8, 38u8, 49u8, 60u8, 71u8, 82u8, 93u8, 7u8, 9u8, 10u8, 82u8,
+            51u8, 96u8, 130u8, 206u8, 17u8, 28u8, 39u8, 50u8, 61u8, 72u8, 83u8, 94u8,
+        ];
+        let data2 = un_group(blocks2);
+
+        assert_eq!(data2, expected_data2)
+    }
+
+    #[test]
+    fn unpad_test() {
+        assert_eq!(
+            vec![2u8, 1u8, 7u8, 5u8],
+            un_pad(vec![
+                2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8, 12u8
+            ])
+        );
+
+        assert_eq!(
+            vec![
+                2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8
+            ],
+            un_pad(vec![
+                2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8, 1u8
+            ])
+        );
+        assert_eq!(
+            vec![
+                2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8, 7u8
+            ],
+            un_pad(vec![
+                2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+                12u8, 7u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8, 16u8,
+                16u8, 16u8, 16u8, 16u8
+            ])
+        )
+    }
+
+    #[test]
+    fn cbc_should_works() {
+        // let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
+        let plain_text = vec![
+            2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
+            7u8,
+        ];
+        let key: [u8; BLOCK_SIZE] = [0; 16];
+        // println!("plain_text: {:?}", plain_text);
+
+        let cipher_text = cbc_encrypt(plain_text.clone(), key);
+
+        // println!("cipher_text: {:?}", cipher_text);
+        
+        let message = cbc_decrypt(cipher_text, key);
+        // println!("message: {:?}", message);
+
+        assert_eq!(plain_text, message);
+    }
 }
