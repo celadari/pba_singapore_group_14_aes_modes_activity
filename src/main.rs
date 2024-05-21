@@ -235,7 +235,8 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         IV = new_group;
     }
 
-    message
+    un_pad(message)
+
 }
 
 /// Another mode which you can implement on your own is counter mode.
@@ -470,12 +471,6 @@ mod tests {
     #[test]
     fn cbc_should_works() {
         let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
-
-        // Happy case
-        // let plain_text = vec![
-        //     2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
-        //     7u8,
-        // ];
 
         let key: [u8; BLOCK_SIZE] = [0; 16];
 
