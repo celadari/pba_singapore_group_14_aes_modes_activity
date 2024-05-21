@@ -12,9 +12,11 @@
 //! best, and can sometimes be trivially broken.
 
 use aes::{
+    cipher,
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
+use rand::Rng;
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -107,6 +109,9 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let pad_data_len = data.len();
+    if (pad_data_len == 0) {
+        return data;
+    }
     let pad_amount = *data.get(pad_data_len - 1).unwrap();
     data[..pad_data_len - usize::from(pad_amount)].to_vec()
 }
@@ -198,7 +203,6 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         let current_cipher_text = aes_encrypt(xored, &key);
         println!("encrypted data: {:?}", current_cipher_text);
 
-
         // use the cipher text as the new IV
         current_iv = current_cipher_text;
 
@@ -250,11 +254,71 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random nonce
-    todo!()
+    let mut rng = rand::thread_rng();
+    let mut nonce: [u8; 8] = Default::default();
+    for i in 0..8 {
+        nonce[i] = rng.gen();
+    }
+
+    let plain_text_blocks = group(pad(plain_text));
+    let nb_blocks = plain_text_blocks.len();
+
+    let counters = (0..nb_blocks - 1).into_iter();
+
+    let ciphered_blocks = counters
+        .zip(plain_text_blocks)
+        .map(|(counter_number, plain_text_block)| {
+            let counter_bytes: [u8; 8] = counter_number.to_le_bytes();
+            let mut v: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            v[0..8].copy_from_slice(&nonce);
+            v[8..16].copy_from_slice(&counter_bytes);
+            xor_arrays(aes_encrypt(v, &key), plain_text_block)
+        })
+        .collect::<Vec<[u8; BLOCK_SIZE]>>();
+
+    let ciphered_text = un_pad(un_group(ciphered_blocks));
+    // // Insert the nonce as the first block of the ciphered text
+    let mut result = Vec::default();
+    result.extend_from_slice(&nonce);
+    result.extend(ciphered_text);
+    result
+}
+
+fn xor_arrays(array1: [u8; BLOCK_SIZE], array2: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
+    let mut xor_result: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+    for i in 0..BLOCK_SIZE {
+        xor_result[i] = array1[i] ^ array2[i];
+    }
+    xor_result
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    // Extract the nonce from the first 8 bytes of the ciphertext
+    let nonce: [u8; 8] = {
+        let mut nonce = [0u8; 8];
+        nonce.copy_from_slice(&cipher_text[0..8]);
+        nonce
+    };
+
+    // Extract the remaining ciphertext blocks
+    let ciphered_text = &cipher_text[16..].to_vec();
+    let ciphered_blocks = group(pad(cipher_text));
+    let nb_blocks = ciphered_blocks.len();
+
+    let counters = (0..nb_blocks - 1).into_iter();
+
+    let plain_text_blocks = counters
+        .zip(ciphered_blocks)
+        .map(|(counter_number, ciphered_block)| {
+            let counter_bytes: [u8; 8] = counter_number.to_le_bytes();
+            let mut v: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            v[0..8].copy_from_slice(&nonce);
+            v[8..16].copy_from_slice(&counter_bytes);
+            xor_arrays(aes_encrypt(v, &key), ciphered_block)
+        })
+        .collect::<Vec<[u8; BLOCK_SIZE]>>();
+
+    un_pad(un_group(plain_text_blocks))
 }
 
 #[cfg(test)]
@@ -389,21 +453,32 @@ mod tests {
     }
 
     #[test]
+    fn ctr_encrypt_test() {
+        let plain_text = "i am a cow";
+        let byte_vector: Vec<u8> = plain_text.as_bytes().to_vec();
+        let key =
+            [1u8, 6u8, 5u8, 6u8, 2u8, 5u8, 44u8, 3u8, 7u8, 8u8, 9u8, 1u8, 14u8, 13u8, 15u8, 76u8];
+        let groups = group(pad(byte_vector.clone()));
+        let num_groups = groups.len();
+        let encrypted = ctr_encrypt(byte_vector, key);
+        assert_eq!(encrypted.len(), num_groups);
+    }
+
+    #[test]
     fn cbc_should_works() {
         // let plain_text = "Bitcoin is the first decentralized cryptocurrency. Nodes in the peer-to-peer bitcoin network verify transactions through cryptography and record them in a public distributed ledger, called a blockchain, without central oversight.".as_bytes().to_vec();
+
+        // Happy case
         let plain_text = vec![
             2u8, 1u8, 7u8, 5u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8, 12u8,
             7u8,
         ];
+
         let key: [u8; BLOCK_SIZE] = [0; 16];
-        // println!("plain_text: {:?}", plain_text);
 
         let cipher_text = cbc_encrypt(plain_text.clone(), key);
 
-        // println!("cipher_text: {:?}", cipher_text);
-        
         let message = cbc_decrypt(cipher_text, key);
-        // println!("message: {:?}", message);
 
         assert_eq!(plain_text, message);
     }
