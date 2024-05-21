@@ -135,6 +135,15 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     return message;
 }
 
+fn xor(x: [u8; BLOCK_SIZE], y: [u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
+    let mut xored: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+
+    for (i, (&x, &y)) in x.iter().zip(y.iter()).enumerate() {
+        xored[i] = x ^ y;
+    }
+    xored
+}
+
 /// The next mode, which you can implement on your own is cipherblock chaining.
 /// This mode actually is secure, and it often used in real world applications.
 ///
@@ -191,8 +200,26 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
+    // 1. get iv
+    let mut groups = group(cipher_text);
 
-    todo!()
+    let mut IV = groups.first().unwrap().clone();
+    groups.remove(0);
+    let mut message: Vec<u8> = vec![];
+    // 2. get groups
+    for group in groups {
+
+        let new_group = group.clone();
+        // 3. decrypt
+        let data = aes_encrypt(group, &key);
+
+        // 4. XOR with IV
+        let decrypt_data = xor(data, IV);
+        message.extend(decrypt_data.iter());
+        IV = new_group;
+    }
+
+    message
 }
 
 /// Another mode which you can implement on your own is counter mode.
