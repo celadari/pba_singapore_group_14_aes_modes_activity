@@ -134,7 +134,44 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
 
-    todo!()
+    use rand::thread_rng;
+    use rand::{rngs::ThreadRng, Rng};
+
+    fn generate_random_iv(rng: &mut ThreadRng) -> [u8; BLOCK_SIZE] {
+        let mut iv = [0u8; BLOCK_SIZE];
+        rng.fill(&mut iv);
+        iv
+    }
+
+    let mut rng = thread_rng();
+
+    // Generate a random IV
+    // let iv = generate_random_iv(&mut rng);
+
+    let groups = group(plain_text);
+
+    let mut current_iv = [1u8; BLOCK_SIZE]; // Example initialization vectors
+    let mut result: Vec<u8> = current_iv.to_vec();
+
+    for group in groups {
+        // xor group with IV
+
+        let mut xored: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+
+        for (i, (&x, &y)) in current_iv.iter().zip(group.iter()).enumerate() {
+            xored[i] = x ^ y;
+        }
+
+        // encrypt the xor'd group
+        let current_cipher_text = aes_encrypt(xored, &key);
+
+        // use the cipher text as the new IV
+        current_iv = current_cipher_text;
+
+        result.extend(current_cipher_text.iter());
+    }
+
+    result
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
